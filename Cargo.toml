@@ -1,0 +1,6 @@
+[package]
+name = "calculator"
+version = "0.1.0"
+authors = ["Justin Bieber <jzw2@gmail.com>"]
+
+[dependencies]
