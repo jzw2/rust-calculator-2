@@ -27,6 +27,7 @@ impl Operator {
     }
 }
 
+//needed to implement operator precedence
 impl PartialOrd for Operator {
     fn partial_cmp(&self, other: &Operator) -> Option<std::cmp::Ordering> {
         let precedence_1 = match self {
@@ -92,20 +93,49 @@ impl Expression {
     }
 
     fn parse(input: String) -> Expression {
-        let tokens: Vec<&str> = input.split(" ").collect();
-        let mut ret: Expression = Value(tokens[0].parse().unwrap());
-        for index in 1..tokens.len() {
-            if index % 2 == 0 {
-                continue;
-            }
-            let parsed = Operator::parse(tokens[index].into());
-            if let Some(op) = parsed {
-                let next_num = tokens[index + 1].parse().unwrap();
-                let next_num = Box::new(Expression::Value(next_num));
-                ret = Expression::Operation(op, Box::new(ret), next_num);
+        //dijkstras shunting yard algorithm
+        let tokens: Vec<Token> = Token::tokenize(&input);
+        let mut operator_stack: Vec<Operator> = Vec::new();
+        let mut result_stack: Vec<Expression> = Vec::new();
+
+        for token in tokens {
+            match token {
+                Token::Number(num) => {
+                   result_stack.push(Expression::Value(num));
+                }
+                Token::BinOp(op) => {
+                    while !operator_stack.is_empty() {
+                        if operator_stack.last().unwrap() < &op { // not empty so we are good
+                            break;
+                        }
+
+                        let apply_op = operator_stack.pop().unwrap(); //already checked its ok in loop
+                        let val1 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
+                        let val2 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
+                        //flip val2 and val1 because the stack reverses ordering
+                        result_stack.push(Operation(apply_op, Box::new(val2), Box::new(val1)));
+
+                    }
+                    operator_stack.push(op);
+                }
+                Token::LeftParenth => unimplemented!(),
+                Token::RightParenth => unimplemented!(),
+
             }
         }
-        ret
+
+        while !operator_stack.is_empty() {
+
+            let apply_op = operator_stack.pop().unwrap(); //already checked its ok in loop
+            let val1 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
+            let val2 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
+
+            result_stack.push(Operation(apply_op, Box::new(val2), Box::new(val1)));
+
+        }
+        
+
+        result_stack.pop().expect(&format!("parsing error with {}", input))
     }
 }
 
@@ -155,10 +185,26 @@ mod tests {
     }
 
     #[test]
+    fn subtraction() {
+        assert_eq!(5, Expression::parse("12 - 7".into()).eval());
+    }
+
+    #[test]
+    fn mult_sub_add() {
+        assert_eq!(104, Expression::parse("3 + 5 * 21 - 6 + 2".into()).eval())
+    }
+
+    #[test]
     fn operator_precendence() {
         assert!(Operator::Add < Operator::Mult);
         assert!(Operator::Sub < Operator::Mult);
         assert!(Operator::Mult > Operator::Add);
         assert!(Operator::Add == Operator::Add);
+    }
+
+    #[test]
+    #[should_panic]
+    fn garbage_parse() {
+        Expression::parse("yolo swag".into());
     }
 }
