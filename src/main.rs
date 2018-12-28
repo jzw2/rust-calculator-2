@@ -97,6 +97,7 @@ impl Expression {
         let tokens: Vec<Token> = Token::tokenize(&input);
         let mut operator_stack: Vec<Operator> = Vec::new();
         let mut result_stack: Vec<Expression> = Vec::new();
+        let mut par_stack: Vec<usize> = Vec::new(); //stores the index after the parenthesis
 
         for token in tokens {
             match token {
@@ -108,6 +109,12 @@ impl Expression {
                         if operator_stack.last().unwrap() < &op { // not empty so we are good
                             break;
                         }
+                        if let Some(index) = par_stack.last() {
+                            if *index == operator_stack.len() {
+                                break;
+                            }
+                        }
+                        
 
                         let apply_op = operator_stack.pop().unwrap(); //already checked its ok in loop
                         let val1 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
@@ -118,8 +125,19 @@ impl Expression {
                     }
                     operator_stack.push(op);
                 }
-                Token::LeftParenth => unimplemented!(),
-                Token::RightParenth => unimplemented!(),
+                Token::LeftParenth => {
+                    par_stack.push(operator_stack.len());
+                }
+                Token::RightParenth => {
+                    let index = par_stack.pop().expect("Mismatched parentheses");
+                    while operator_stack.len() > index {
+                        let apply_op = operator_stack.pop().unwrap(); //already checked its ok in loop
+                        let val1 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
+                        let val2 = result_stack.pop().expect(&format!("parsing error with {}", input)); 
+                        //flip val2 and val1 because the stack reverses ordering
+                        result_stack.push(Operation(apply_op, Box::new(val2), Box::new(val1)));
+                    }
+                }
 
             }
         }
@@ -207,4 +225,17 @@ mod tests {
     fn garbage_parse() {
         Expression::parse("yolo swag".into());
     }
+
+
+    #[test]
+    fn simple_parenthesis() {
+        assert_eq!(2, Expression::parse("( 1 + 1 )".into()).eval());
+    }
+
+    #[test]
+    fn parenthesis2() {
+        assert_eq!(23, Expression::parse("5 + 6 * 3".into()).eval());
+        assert_eq!(33, Expression::parse("( 5 + 6 ) * 3".into()).eval());
+    }
+
 }
