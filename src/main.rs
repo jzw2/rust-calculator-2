@@ -57,7 +57,7 @@ enum Token {
 
 impl Token {
     fn tokenize(input: &str) -> Vec<Token> {
-        let tokens = input.split(" ");
+        let tokens = input.split_whitespace();
         let mut new_tokens = Vec::new();
 
         for token in tokens {
@@ -160,17 +160,18 @@ impl Expression {
 use Expression::*;
 use Operator::*;
 
+use std::io;
+
 fn main() {
-    let a = Add;
-    let exp1 = Operation(a, Box::new(Value(1)), Box::new(Value(2)));
-    let exp2 = Operation(Mult, Box::new(exp1), Box::new(Value(3)));
-    let exp3 = exp2.clone();
-    println!("{}", exp2.eval());
-    println!("{:?}", exp3);
-    println!("{:?}", Expression::parse("3 + 5".into()));
-    println!("{:?}", Expression::parse("3 + 5 * 12".into()));
-    println!("{:?}", Expression::parse("3 + 5 * 21 - 6 + 2".into()));
-    println!("{:?}", Expression::parse("3 + 5 * 21 - 6 + 2".into()));
+    loop {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).expect("failed reading in line");
+
+        let result = Expression::parse(input).eval();
+        println!("Result: {}", result);
+
+
+    }
 }
 
 #[cfg(test)]
